@@ -75,10 +75,18 @@ C
       INCLUDE  'SURFWATER.H'
       INCLUDE  'RIVERNETWORK.H'
 C
+C  BUILD STAMP: change this string on every edit+rebuild and confirm it
+C  with `strings ./cathy | grep "BUILD STAMP"` AND in the run's stdout
+C  before investigating anything else -- this settles whether the binary
+C  that ran is actually the source you think it is.
+C
+      write(6,*) '>>> DATIN BUILD STAMP scf-fix-v4 <<<'
+C
 C  unit IIN1 input 
 C
       READ(IIN1,*) IPRT1,NCOUT,TRAFLAG
       READ(IIN1,*) ISIMGR,PONDH_MIN,VELREC
+      write(6,*) 'ISIMGR=',ISIMGR
       IF (ISIMGR .EQ. 0) THEN
          FL3D=.TRUE.
          SURF=.FALSE.
@@ -104,6 +112,7 @@ C
          CALL CLOSIO
          STOP
       END IF
+      write(6,*) 'ISIMGR=',ISIMGR,' GRID=',GRID,' DEM=',DEM
       READ(IIN1,*) KSLOPE,TOLKSL
       READ(IIN1,*) PKRL,PKRR,PSEL,PSER
       READ(IIN1,*) PDSE1L,PDSE1R,PDSE2L,PDSE2R
@@ -178,6 +187,17 @@ C
                VEG_TYPE(I)=VEG_TYPE(1)
             END DO
          END IF
+C
+C  SCF-VEG FIX: the GRID (ISIMGR=0) path reads VEG_TYPE straight off
+C  disk with no validation, so a stale/corrupted grid file can still
+C  hand ETRAN a 0 index even though the DEM/TRIANGOLI path below is
+C  clamped. Clamp here too, for the same reason.
+C
+         DO I=1,NNOD
+            VEG_TYPE(I) = MAX(1,VEG_TYPE(I))
+         END DO
+         write(6,*) 'GRID branch VEG_TYPE min/max=',
+     1               MINVAL(VEG_TYPE(1:NNOD)),MAXVAL(VEG_TYPE(1:NNOD))
          IF (NVEG.GT.MAXVEG) THEN
             WRITE(IOUT2,*) 'Error: NVEG is too large=',NVEG
             CALL CLOSIO
@@ -228,9 +248,12 @@ c
      3                  ELTRIA,CELL)
          NVEG=0
          DO I=1,NNOD
-            VEG_TYPE(I)=INT(SCR(I))
+            VEG_TYPE(I)=MAX(1,INT(SCR(I)))
             NVEG=MAX(NVEG,VEG_TYPE(I))
          END DO
+         write(6,*) 'DEM branch VEG_TYPE min/max=',
+     1               MINVAL(VEG_TYPE(1:NNOD)),MAXVAL(VEG_TYPE(1:NNOD))
+
          IF (NVEG.GT.MAXVEG) THEN
             WRITE(IOUT2,*) 'Error: NVEG is too large=',NVEG
             CALL CLOSIO
@@ -419,12 +442,28 @@ C
 C     unit IIN4 input
 C
          READ(IIN4,*) PMIN
-         READ(IIN4,*) IPEAT,SCF
+         READ(IIN4,*) IPEAT
          READ(IIN4,*) CBETA0,CANG
 C    variable vegetation type (NVEG) within the domain
          DO I=1,NVEG
             READ(IIN4,*) PCANA(I),PCREF(I),PCWLT(I),ZROOT(I),
      1                   PZ(I),OMGC(I)
+         END DO
+C    SCF-VEG: read as its own trailing line, appended AFTER the
+C    existing 6-column per-vegetation-type block above, rather than
+C    merged into it, so that block's line format is unchanged for any
+C    external tool that writes it (e.g. pyCATHY). NOTE: this line is
+C    NOT optional -- IVGHU and the moisture-curve parameters are read
+C    immediately afterward from this same file, so a missing SCF line
+C    here would silently corrupt those reads instead of failing
+C    cleanly. Whatever generates this input deck (e.g. pyCATHY) MUST
+C    be updated to write this line; there is no safe way to make it
+C    optional without decoupling SCF onto its own separate input file.
+         READ(IIN4,*) (SCF(I),I=1,NVEG)
+         WRITE(6,*) 'DEBUG FEDDES TABLE, NVEG=',NVEG
+         DO I=1,NVEG
+            WRITE(6,*) I,PCANA(I),PCREF(I),PCWLT(I),ZROOT(I),
+     1                 PZ(I),OMGC(I),SCF(I)
          END DO
 c     peat soil deformation is not yet supported for the Newton
 c     scheme

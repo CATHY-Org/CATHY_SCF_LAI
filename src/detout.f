@@ -119,7 +119,28 @@ ccc   end do
          DO K=1,NSTR+1
             ETA(I)=ETA(I)+QTRANIE((K-1)*NNOD+I)
          END DO
-         WRITE(777,2060) I,X(I),Y(I),ETA(I)/ARENOD(I)
+C        SCF-CAP fix: ATMACT(I) is the soil-evaporation share of
+C        ATMPOT (a surface flux, one value per surface node); ETA(I)
+C        above is transpiration only (the vertical sum of QTRANIE).
+C        Previously only ETA(I) was written here under the "ACT. ETRA"
+C        label, so evaporation never appeared in any file pyCATHY (or
+C        any other downstream reader) parses. ATMACT is now summed in
+C        explicitly so "ACT. ETRA" is a true combined actual-ET total,
+C        with the transpiration and evaporation components also
+C        written out individually for diagnostics.
+C
+C        SIGN NOTE: ETA(I) (summed from QTRANIE in ETRAN.F) uses the
+C        root-uptake sink convention, positive = water extracted.
+C        ATMACT(I) (set in ATMNXT.F) uses the surface-flux convention,
+C        negative = water leaving the domain. Summing them raw
+C        (ETA+ATMACT) partially cancels whenever both transpiration and
+C        evaporation are active simultaneously (e.g. mixed/sparse
+C        vegetation), instead of adding their magnitudes. ATMACT is
+C        negated here so both terms -- and their sum -- are reported
+C        on a consistent positive-is-actual-ET-loss basis.
+         WRITE(777,2062) I,X(I),Y(I),ETA(I)/ARENOD(I),
+     1                   -ATMACT(I)/ARENOD(I),
+     2                   (ETA(I)-ATMACT(I))/ARENOD(I)
       END DO
 C
       RETURN
@@ -145,9 +166,10 @@ C
  2041 FORMAT(' SURFACE NODE              X              Y',
      1       '      REC. FLUX')
  2042 FORMAT(' SURFACE NODE              X              Y',
-     1       '      ACT. ETRA')
+     1       '      ACT. TRAN      ACT. EVAP      ACT. ETRA')
  2050 FORMAT(' SURFACE NODE              X              Y',
      1       '  PONDING HEAD ')
  2060 FORMAT(7X,I6,3(1PE15.6),i6,1pe15.6)
+ 2062 FORMAT(7X,I6,5(1PE15.6))
  2080 FORMAT(7X,I6,2(1PE15.6),13X,I2)
       END

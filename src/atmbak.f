@@ -7,14 +7,18 @@ C
 C***********************************************************************
 C
       SUBROUTINE ATMBAK(NNOD,TIME,IFATM,AREA,ATMPOT,ATMACT,
-     1                  ATMTIM,ATMINP,IETO,DELTAT,SCF)
+     1                  ATMTIM,ATMINP,IETO,DELTAT,SCF,VEG_TYPE)
+C
+C  SCF-VEG: VEG_TYPE added, SCF widened from scalar to array, indexed
+C  by vegetation type, same as in ATMNXT/ATMONE/ETRAN.
 C
       IMPLICIT  NONE
       INCLUDE   'CATHY.H'
       INTEGER   I,J,IETO
       INTEGER   NNOD
       INTEGER   IFATM(NODMAX)
-      REAL*8    SLOPE,DSATM,ALPHA,SCF
+      INTEGER   VEG_TYPE(*)
+      REAL*8    SLOPE,DSATM,ALPHA,SCF(*)
       REAL*8    TIME,GASDEV,DELTAT
       REAL*8    AREA(*),ATMPOT(*),ATMACT(*),ATMTIM(*),ATMINP(3,*)
 C
@@ -30,7 +34,7 @@ C
              IF (ATMPOT(I).GE.0.0d0) THEN
                  ATMACT(I)=ATMPOT(I)
              ELSE
-                 ATMACT(I)=(1.0d0-SCF)*ATMPOT(I)
+                 ATMACT(I)=(1.0d0-SCF(VEG_TYPE(I)))*ATMPOT(I)
              END IF
          END IF
       END DO

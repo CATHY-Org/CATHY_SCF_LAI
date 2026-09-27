@@ -10,7 +10,11 @@ C
       SUBROUTINE ATMONE(NNOD,HSPATM,HTIATM,IETO,TIME,DELTAT,
      1                  PONDH_MIN,IFATM,IFATMP,ARENOD,ATMPOT,ATMACT,
      2                  ATMOLD,ATMTIM,ATMINP,PNEW,PTIMEP,
-     3                  NP,NQ,CONTP,CONTQ,NSF,NSFNUM,NSFNOD)
+     3                  NP,NQ,CONTP,CONTQ,NSF,NSFNUM,NSFNOD,VEG_TYPE)
+C
+C  SCF-VEG: VEG_TYPE added so SCF (now SCF(MAXVEG), arriving via the
+C  SOILCHAR.H include below -- no other interface change needed for
+C  SCF itself) can be indexed per node as SCF(VEG_TYPE(I)).
 C
       IMPLICIT  NONE
       INCLUDE  'CATHY.H'
@@ -19,6 +23,7 @@ C
       INTEGER   NP,NQ
       INTEGER   CONTP(*),CONTQ(*),IFATM(*),IFATMP(*)
       INTEGER   NSFNUM(*),NSFNOD(NSFMAX,*)
+      INTEGER   VEG_TYPE(*)
       REAL*8    TIMEIN,SLOPE,GASDEV
       REAL*8    TIME,DELTAT,PONDH_MIN,DSATM
       REAL*8    ARENOD(*),ATMPOT(*),ATMACT(*),ATMOLD(*)
@@ -148,7 +153,7 @@ C
             IF (ATMPOT(I).GE.0.0d0) THEN
                 ATMACT(I)=ATMPOT(I)
             ELSE
-                ATMACT(I)=(1.0d0-SCF)*ATMPOT(I)
+                ATMACT(I)=(1.0d0-SCF(VEG_TYPE(I)))*ATMPOT(I)
             END IF
          ELSE
             ATMACT(I)=0.0D0

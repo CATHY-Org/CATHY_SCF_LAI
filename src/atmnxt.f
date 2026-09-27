@@ -8,7 +8,13 @@ C***********************************************************************
 C
       SUBROUTINE ATMNXT(NNOD,HSPATM,HTIATM,IETO,TIME,IFATM,AREA,
      1                  ATMPOT,ATMACT,ATMTIM,ATMINP,DELTAT,
-     2                  NP,NQ,CONTP,CONTQ,NSF,NSFNUM,NSFNOD,SCF)
+     2                  NP,NQ,CONTP,CONTQ,NSF,NSFNUM,NSFNOD,SCF,
+     3                  VEG_TYPE)
+C
+C  SCF-VEG: VEG_TYPE added, SCF widened from a scalar to an array
+C  indexed by vegetation type (SCF(VEG_TYPE(I))), so canopy cover can
+C  vary spatially by vegetation class instead of being one global
+C  value.
 C
       IMPLICIT  NONE
       INCLUDE   'CATHY.H'
@@ -18,7 +24,8 @@ C
       INTEGER   IFATM(*)
       INTEGER   CONTP(*),CONTQ(*)
       INTEGER   NSFNUM(*),NSFNOD(NSFMAX,*)
-      REAL*8    TIMEIN,SLOPE,DSATM,ALPHA,SCF
+      INTEGER   VEG_TYPE(*)
+      REAL*8    TIMEIN,SLOPE,DSATM,ALPHA,SCF(*)
       REAL*8    TIME,GASDEV,DELTAT
       REAL*8    AREA(*),ATMPOT(*),ATMACT(*),ATMTIM(*),ATMINP(3,*)
       INCLUDE  'IOUNITS.H'
@@ -52,7 +59,7 @@ C
                 IF (ATMPOT(I).GE.0.0d0) THEN
                     ATMACT(I)=ATMPOT(I)
                 ELSE
-                    ATMACT(I)=(1.0d0-SCF)*ATMPOT(I)
+                    ATMACT(I)=(1.0d0-SCF(VEG_TYPE(I)))*ATMPOT(I)
                 END IF
             END IF
          END DO
@@ -63,7 +70,7 @@ C
                 IF (ATMPOT(I).GE.0.0d0) THEN
                     ATMACT(I)=ATMPOT(I)
                 ELSE
-                    ATMACT(I)=(1.0d0-SCF)*ATMPOT(I)
+                    ATMACT(I)=(1.0d0-SCF(VEG_TYPE(I)))*ATMPOT(I)
                 END IF
             END IF
          END DO

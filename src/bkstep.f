@@ -16,12 +16,21 @@ C
      8                  POLD,PTOLD,PNEW,PTNEW,PTIMEP,
      9                  ATMACT,ATMPOT,ATMOLD,
      A                  QPNEW,QPOLD,SFQ,SFQP,ANP,ANQ,ACONTP,ACONTQ,
-     B                  NSFNOD,SFV,SFVNUM,SFVNOD,SFVTIM,TRANSP)
+     B                  NSFNOD,SFV,SFVNUM,SFVNOD,SFVTIM,TRANSP,
+     C                  Z,PNODI,VEG_TYPE,QTRANIE)
+C
+C  SCF-CAP MODIFICATION: Z, PNODI, VEG_TYPE and QTRANIE added so that
+C  ETRAN (root water uptake) can be re-run here, exactly as it is in
+C  the main time-stepping loop in cathy_main.f. Previously BKSTEP
+C  recomputed ATMACT (soil evaporation) via ATMNXT/ATMBAK on every
+C  back-step but left QTRANIE (transpiration) stale from the failed
+C  attempt, at the old DELTAT and pressure-head field.
 C
       IMPLICIT NONE
       INCLUDE 'CATHY.H'
       INTEGER  I,J
       INTEGER  IPRT1,N,NSTR
+      INTEGER  VEG_TYPE(*)
       INTEGER  HSPATM,HTIATM,IETO,HTIDIR,HTINEU
       INTEGER  ANP,ANQ
       INTEGER  NDIR(3),NDIRC(3),NP(3),NQ(3),NNEU(3),NNEUC(3)
@@ -46,6 +55,7 @@ C
       REAL*8   ATMACT(*),ATMPOT(*),ATMOLD(*)
       REAL*8   QPNEW(*),QPOLD(*),SFQ(NSFMAX,*),SFQP(NSFMAX,*)
       REAL*8   SFVTIM(2)
+      REAL*8   Z(*),PNODI(*),QTRANIE(*)
       INCLUDE 'SOILCHAR.H'
       INCLUDE 'SURFWATER.H'
       INCLUDE 'IOUNITS.H'
@@ -127,11 +137,23 @@ C
       IF (TIME .GT. ATMTIM(2)) THEN
          CALL ATMNXT(NNOD,HSPATM,HTIATM,IETO,TIME,IFATM,ARENOD,
      1               ATMPOT,ATMACT,ATMTIM,ATMINP,DELTAT,
-     2               ANP,ANQ,ACONTP,ACONTQ,NSF,NSFNUM,NSFNOD,SCF)
+     2               ANP,ANQ,ACONTP,ACONTQ,NSF,NSFNUM,NSFNOD,SCF,
+     3               VEG_TYPE)
       ELSE
          CALL ATMBAK(NNOD,TIME,IFATM,ARENOD,ATMPOT,ATMACT,
-     1               ATMTIM,ATMINP,IETO,DELTAT,SCF)
+     1               ATMTIM,ATMINP,IETO,DELTAT,SCF,VEG_TYPE)
       END IF
+C
+C  SCF-CAP: recompute transpiration (QTRANIE) here too, consistent
+C  with the freshly recomputed ATMACT above, and using the same PNEW
+C  and ATMACT that ADRSTN/SWITCH_OLD are about to test below -- exactly
+C  the same ordering as ATMNXT/ETRAN/ADRSTN in cathy_main.f. Without
+C  this call, QTRANIE would be left over from the failed, larger-
+C  DELTAT attempt through every back-step.
+C
+      CALL ETRAN(N,NNOD,NSTR,ATMPOT,ATMACT,Z,PNEW,PNODI,VEG_TYPE,
+     1           QTRANIE)
+C
       IF (.NOT. SURF) THEN
          CALL SWITCH_OLD(NNOD,IFATM,ATMACT,ATMPOT,PNEW)
       ELSE                

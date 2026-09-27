@@ -2620,6 +2620,8 @@ C
      1        HTIEFF,NSTEP,TIME,DELTAT,DELTATS,QOI_SN,EFFTIM,
      2        SURFACE_WATER_INP)
       ELSE
+C  SCF-VEG FIX: VEG_TYPE added so INITAL can forward it to its internal
+C  CALL ATMONE (see matching fix/comment in inital.f).
          CALL INITAL(NNOD,NSTR,N,NT,NTRI,NP,NQ,NSF,NDIR,NDIRC,
      1        NNEU,NNEUC,HTIDIR,HTINEU,HSPATM,HTIATM,IETO,IPRT1,
      2        IPOND,INDP,NITERT,ITLIN,ITRTOT,ITER,NSTEP,
@@ -2649,7 +2651,7 @@ C
      R        PUNTDIRFLOW_NODE,PUNTNEUFLOW_NODE,
      S        CONDIR_NODE,CONNEU_NODE,
      T        LEL,KEL,LAMBDA,LAMBDANODI,KD,KDNODI,
-     V        TRIANG)
+     V        TRIANG,VEG_TYPE)
 C  
 C  calculate SW and CKRW needed for storage and velocity calculations
 C  and detailed output
@@ -2921,12 +2923,20 @@ C
 C
             CALL ATMNXT(NNOD,HSPATM,HTIATM,IETO,TIME,IFATM,ARENOD,
      1               ATMPOT,ATMACT,ATMTIM,ATMINP,DELTAT,
-     2               ANP,ANQ,ACONTP,ACONTQ,NSF,NSFNUM,NSFNOD,SCF)
+     2               ANP,ANQ,ACONTP,ACONTQ,NSF,NSFNUM,NSFNOD,SCF,
+     3               VEG_TYPE)
 C
 C  compute root water uptake for next time step
 C  time-variable maximum root depth
 C
-            CALL ETRAN(N,NNOD,NSTR,ATMPOT,Z,PNEW,PNODI,VEG_TYPE,QTRANIE)
+C  SCF-VEG FIX: this call was not updated when ATMACT was added to
+C  ETRAN's argument list (see etran.f header comment). Without it,
+C  every argument from ATMACT onward bound one slot early, so ETRAN
+C  was reading QTRANIE in place of VEG_TYPE -- the source of the
+C  "VEG_TYPE=0" / "DECREASE ZROOT" crash. ATMACT is already computed
+C  above by ATMNXT, so just pass it through.
+            CALL ETRAN(N,NNOD,NSTR,ATMPOT,ATMACT,Z,PNEW,PNODI,VEG_TYPE,
+     1                 QTRANIE)
             QTRAN=0.0d0
             DO I=1,N
                QTRAN=QTRAN+QTRANIE(I)
@@ -3170,7 +3180,8 @@ C ----------------------------------------------------------------------
      8           POLD,PTOLD,PNEW,PTNEW,PTIMEP,
      9           ATMACT,ATMPOT,ATMOLD,
      A           QPNEW,QPOLD,SFQ,SFQP,ANP,ANQ,ACONTP,ACONTQ,
-     B           NSFNOD,SFV,SFVNUM,SFVNOD,SFVTIM,TRANSP)
+     B           NSFNOD,SFV,SFVNUM,SFVNOD,SFVTIM,TRANSP,
+     C           Z,PNODI,VEG_TYPE,QTRANIE)
             CALL NEUMANN(TIME,NNEU,NNEUC,NNOD,NSTR,CKRWP,KZNOD,
      1                   ARENOD,ACONTQ,QINP,Q)
             GO TO 100

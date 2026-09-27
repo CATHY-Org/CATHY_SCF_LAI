@@ -35,7 +35,7 @@ C
      R                  PUNTDIRFLOW_NODE,PUNTNEUFLOW_NODE,
      S                  CONDIR_NODE,CONNEU_NODE,
      T                  LEL,KEL,LAMBDA,LAMBDANODI,KD,KDNODI,
-     V                  TRIANG)
+     V                  TRIANG,VEG_TYPE)
      
       IMPLICIT NONE
       INCLUDE 'CATHY.H'
@@ -84,6 +84,7 @@ C
       REAL*8   CONDIR_NODE(*),CONNEU_NODE(*)
       real*8   sfvtim(2)
       REAL*8   QTRANIE(NMAX)
+      INTEGER  VEG_TYPE(*)
       INCLUDE 'MB_HGRAPH.H'
       INCLUDE 'SOILCHAR.H'
       INCLUDE 'SURFWATER.H'
@@ -232,10 +233,15 @@ C
 C  read and initialize atmospheric boundary condition parameters and
 C  arrays for first time step (times 0.0 and DELTAT)
 C
+C  SCF-VEG FIX: VEG_TYPE was never forwarded to ATMONE (this call was
+C  short one argument vs. ATMONE's header), so ATMONE's SCF(VEG_TYPE(I))
+C  read an out-of-bounds/uninitialized value -- the source of the
+C  step-1, IC-dependent SCF_variable crash. VEG_TYPE is now passed
+C  through from INITAL's own (also newly added) argument list.
       CALL ATMONE(NNOD,HSPATM,HTIATM,IETO,TIME,DELTAT,PONDH_MIN,
      1     IFATM,IFATMP,ARENOD,ATMPOT,ATMACT,ATMOLD,ATMTIM,
      2     ATMINP,PNEW,PTIMEP,ANP,ANQ,ACONTP,
-     3     ACONTQ,NSF,NSFNUM,NSFNOD)
+     3     ACONTQ,NSF,NSFNUM,NSFNOD,VEG_TYPE)
 C
 C  read and initialize nudging parameters and arrays
 C
