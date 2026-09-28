@@ -22,6 +22,7 @@ C
       REAL*8    X(*),Y(*),Z(*)
       real*8    ovflnod(*),atmact(*),arenod(*),pondnod(*),QTRANIE(*)
       real*8    RECNOD(NODMAX),ETA(NODMAX)
+      real*8    EVAP
       INCLUDE  'IOUNITS.H'
 C
 
@@ -138,9 +139,26 @@ C        evaporation are active simultaneously (e.g. mixed/sparse
 C        vegetation), instead of adding their magnitudes. ATMACT is
 C        negated here so both terms -- and their sum -- are reported
 C        on a consistent positive-is-actual-ET-loss basis.
+C
+C        t=0 FIX: DETOUT is also called once with NSTEP=0, before any
+C        time step has been solved (cathy_main.f). At that point ATMACT
+C        is only the provisional demand set by INITAL/ATMONE, i.e.
+C        (1-SCF)*ATMPOT evaluated at TIME=DELTAT (end of the first
+C        step) and not yet limited by anything. It is not an actual
+C        evaporation flux, so it must not be reported. Writing it
+C        produced a spurious ACT. EVAP spike in the t=0 row of every
+C        run (= ETp*(1-SCF), or the full ETp for SCF=0), which
+C        inflated cumulative ET when monthly runs were restarted.
+C        For NSTEP=0 the evaporation is therefore written as 0 and
+C        ACT. ETRA reduces to the transpiration alone, as in v1.0.0.
+         IF (NSTEP .GT. 0) THEN
+            EVAP = -ATMACT(I)
+         ELSE
+            EVAP = 0.0D0
+         END IF
          WRITE(777,2062) I,X(I),Y(I),ETA(I)/ARENOD(I),
-     1                   -ATMACT(I)/ARENOD(I),
-     2                   (ETA(I)-ATMACT(I))/ARENOD(I)
+     1                   EVAP/ARENOD(I),
+     2                   (ETA(I)+EVAP)/ARENOD(I)
       END DO
 C
       RETURN
