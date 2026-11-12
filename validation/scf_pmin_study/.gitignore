@@ -1,0 +1,7 @@
+work/
+bin/
+_build/
+_src/
+__pycache__/
+*.npz
+runs*/
